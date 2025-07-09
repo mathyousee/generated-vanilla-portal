@@ -9,6 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Tesseract.js for OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="dashboard-layout">
@@ -62,6 +66,27 @@
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
                         Billing History
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#ai-summary" class="nav-link" data-section="ai-summary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                            <polyline points="14,2 14,8 20,8"></polyline>
+                            <path d="M16 13H8"></path>
+                            <path d="M16 17H8"></path>
+                            <path d="M10 9H8"></path>
+                        </svg>
+                        AI Summary
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#settings" class="nav-link" data-section="settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                        </svg>
+                        Settings
                     </a>
                 </li>
             </ul>
@@ -276,6 +301,175 @@
                                     <!-- Billing data will be populated by JavaScript -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Summary Section -->
+            <section id="ai-summary-section" class="content-section">
+                <div class="section-header">
+                    <h1>AI Summary</h1>
+                    <p>Upload a PDF or image file to extract text and generate an AI-powered summary.</p>
+                </div>
+
+                <div class="ai-summary-container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>File Upload</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="upload-area" id="upload-area">
+                                <div class="upload-icon">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                                        <polyline points="14,2 14,8 20,8"></polyline>
+                                    </svg>
+                                </div>
+                                <p>Drag and drop your PDF or image file here, or click to browse</p>
+                                <input type="file" id="file-input" accept=".pdf,image/*" style="display: none;">
+                                <button type="button" id="browse-btn" class="btn btn-secondary">Browse Files</button>
+                            </div>
+                            <div id="file-info" class="file-info" style="display: none;">
+                                <p><strong>Selected file:</strong> <span id="file-name"></span></p>
+                                <p><strong>File size:</strong> <span id="file-size"></span></p>
+                                <button type="button" id="process-btn" class="btn btn-primary">Generate AI Summary</button>
+                                <button type="button" id="clear-btn" class="btn btn-secondary">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="processing-card" style="display: none;">
+                        <div class="card-header">
+                            <h3>Processing</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="processing-status">
+                                <div class="loading-spinner"></div>
+                                <p id="processing-message">Extracting text from your file...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="extracted-text-card" style="display: none;">
+                        <div class="card-header collapsible-header" id="extracted-text-header">
+                            <h3>Extracted Text</h3>
+                            <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M6 9l6 6 6-6"></path>
+                            </svg>
+                        </div>
+                        <div class="card-content collapsible-content" id="extracted-text-content" style="display: none;">
+                            <div class="extracted-text-container">
+                                <textarea id="extracted-text" rows="10" readonly></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="summary-card" style="display: none;">
+                        <div class="card-header">
+                            <h3>AI Summary</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="summary-container">
+                                <div id="summary-text"></div>
+                                <div class="summary-actions">
+                                    <button type="button" id="copy-summary-btn" class="btn btn-secondary">Copy Summary</button>
+                                    <button type="button" id="new-file-btn" class="btn btn-primary">Process New File</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="chat-card" style="display: none;">
+                        <div class="card-header">
+                            <h3>Ask Questions About Your Document</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="chat-container">
+                                <div class="chat-messages" id="chat-messages">
+                                    <div class="chat-message system-message">
+                                        <div class="message-content">
+                                            <p>Hi! I'm here to help you understand your document better. Ask me any questions about the content you just uploaded.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="chat-input-container">
+                                    <div class="chat-input-group">
+                                        <input type="text" id="chat-input" placeholder="Ask a question about your document..." maxlength="500">
+                                        <button type="button" id="send-chat-btn" class="btn btn-primary" disabled>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M22 2L11 13"></path>
+                                                <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <small class="chat-help">Press Enter to send your question</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section">
+                <div class="section-header">
+                    <h1>Settings</h1>
+                    <p>Configure Azure OpenAI settings for AI Summary functionality.</p>
+                </div>
+
+                <div class="settings-container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Azure OpenAI Configuration</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="settings-form">
+                                <div class="form-group">
+                                    <label for="azure-endpoint">Azure OpenAI Endpoint</label>
+                                    <input type="url" id="azure-endpoint" name="azure-endpoint" placeholder="https://your-resource-name.openai.azure.com">
+                                    <small class="form-help">Your Azure OpenAI resource endpoint URL</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="azure-deployment">Deployment Name</label>
+                                    <input type="text" id="azure-deployment" name="azure-deployment" placeholder="your-deployment-name">
+                                    <small class="form-help">The name of your Azure OpenAI model deployment</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="azure-api-key">API Key</label>
+                                    <input type="password" id="azure-api-key" name="azure-api-key" placeholder="your-api-key">
+                                    <small class="form-help">Your Azure OpenAI API key (stored securely in browser)</small>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" id="save-settings-btn" class="btn btn-primary">Save Settings</button>
+                                    <button type="button" id="test-settings-btn" class="btn btn-secondary">Test Connection</button>
+                                    <button type="button" id="reset-settings-btn" class="btn btn-secondary">Reset to Defaults</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Current Status</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="settings-status">
+                                <div class="status-item">
+                                    <span class="status-label">Configuration Status:</span>
+                                    <span id="config-status" class="status-badge">Not Configured</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Mode:</span>
+                                    <span id="mode-status" class="status-value">Demo Mode</span>
+                                </div>
+                                <div id="settings-success" class="success-message" style="display: none;">
+                                    <p>Settings saved successfully!</p>
+                                </div>
+                                <div id="settings-error" class="error-message" style="display: none;">
+                                    <p>Error saving settings. Please try again.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

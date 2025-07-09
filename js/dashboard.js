@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', function() {
         initSessionTimeout();
         loadBillingHistory();
         initAccountDetails();
+        initAISummary();
+        initSettings();
         
         // Setup logout functionality
         const logoutBtn = document.getElementById('logoutBtn');
@@ -85,7 +87,7 @@ function initNavigation() {
     
     // Handle initial navigation based on hash - only once
     const hash = window.location.hash.substring(1);
-    if (hash && ['dashboard', 'account', 'billing'].includes(hash)) {
+    if (hash && ['dashboard', 'account', 'billing', 'ai-summary', 'settings'].includes(hash)) {
         showSection(hash);
     }
 }
@@ -559,8 +561,740 @@ document.addEventListener('keydown', function(e) {
         document.querySelector('[data-section="billing"]').click();
     }
     
+    // Alt + S for AI Summary
+    if (e.altKey && e.key === 's') {
+        e.preventDefault();
+        document.querySelector('[data-section="ai-summary"]').click();
+    }
+    
+    // Alt + T for Settings
+    if (e.altKey && e.key === 't') {
+        e.preventDefault();
+        document.querySelector('[data-section="settings"]').click();
+    }
+    
     // Escape to go back to dashboard
     if (e.key === 'Escape') {
         document.querySelector('[data-section="dashboard"]').click();
     }
 });
+
+// AI Summary Functionality
+function initAISummary() {
+    // Configure PDF.js worker
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file-input');
+    const browseBtn = document.getElementById('browse-btn');
+    const fileInfo = document.getElementById('file-info');
+    const processBtn = document.getElementById('process-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const processingCard = document.getElementById('processing-card');
+    const extractedTextCard = document.getElementById('extracted-text-card');
+    const summaryCard = document.getElementById('summary-card');
+    const chatCard = document.getElementById('chat-card');
+    
+    let selectedFile = null;
+    let currentDocumentText = '';
+    let chatHistory = [];
+    
+    // Initialize AI Summary when section is accessed
+    if (uploadArea && fileInput) {
+        setupFileUpload();
+        setupCollapsibleHeader();
+        setupChatInterface();
+    }
+    
+    function setupCollapsibleHeader() {
+        const header = document.getElementById('extracted-text-header');
+        const content = document.getElementById('extracted-text-content');
+        
+        if (header && content) {
+            header.addEventListener('click', () => {
+                const isExpanded = header.classList.contains('expanded');
+                
+                if (isExpanded) {
+                    header.classList.remove('expanded');
+                    content.style.display = 'none';
+                } else {
+                    header.classList.add('expanded');
+                    content.style.display = 'block';
+                }
+            });
+        }
+    }
+    
+    function setupChatInterface() {
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-chat-btn');
+        const chatMessages = document.getElementById('chat-messages');
+        
+        if (chatInput && sendBtn) {
+            // Enable/disable send button based on input
+            chatInput.addEventListener('input', () => {
+                sendBtn.disabled = !chatInput.value.trim();
+            });
+            
+            // Send on Enter key
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey && chatInput.value.trim()) {
+                    e.preventDefault();
+                    sendChatMessage();
+                }
+            });
+            
+            // Send on button click
+            sendBtn.addEventListener('click', sendChatMessage);
+        }
+    }
+    
+    async function sendChatMessage() {
+        const chatInput = document.getElementById('chat-input');
+        const message = chatInput.value.trim();
+        
+        if (!message || !currentDocumentText) return;
+        
+        // Add user message to chat
+        addChatMessage('user', message);
+        
+        // Clear input and disable send button
+        chatInput.value = '';
+        document.getElementById('send-chat-btn').disabled = true;
+        
+        // Add loading message
+        const loadingMessageId = addChatMessage('assistant', '', true);
+        
+        try {
+            // Get AI response
+            const response = await askDocumentQuestion(message, currentDocumentText);
+            
+            // Remove loading message and add actual response
+            removeChatMessage(loadingMessageId);
+            addChatMessage('assistant', response);
+            
+        } catch (error) {
+            console.error('Error getting chat response:', error);
+            removeChatMessage(loadingMessageId);
+            addChatMessage('assistant', 'Sorry, I encountered an error while processing your question. Please try again.');
+        }
+    }
+    
+    function addChatMessage(role, content, isLoading = false) {
+        const chatMessages = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        
+        messageDiv.id = messageId;
+        messageDiv.className = `chat-message ${role}-message`;
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        if (isLoading) {
+            messageContent.innerHTML = `
+                <div class="message-loading">
+                    <span>AI is thinking</span>
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+        } else {
+            messageContent.innerHTML = formatSummary(content);
+        }
+        
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Store in chat history
+        if (!isLoading) {
+            chatHistory.push({ role, content });
+        }
+        
+        return messageId;
+    }
+    
+    function removeChatMessage(messageId) {
+        const messageElement = document.getElementById(messageId);
+        if (messageElement) {
+            messageElement.remove();
+        }
+    }
+    
+    function clearChatHistory() {
+        const chatMessages = document.getElementById('chat-messages');
+        // Keep only the system message
+        const systemMessage = chatMessages.querySelector('.system-message');
+        chatMessages.innerHTML = '';
+        if (systemMessage) {
+            chatMessages.appendChild(systemMessage);
+        }
+        chatHistory = [];
+    }
+    
+    async function askDocumentQuestion(question, documentText) {
+        // Get Azure OpenAI configuration from localStorage
+        const endpoint = localStorage.getItem('azureOpenAI_endpoint');
+        const deploymentName = localStorage.getItem('azureOpenAI_deploymentName');
+        const apiKey = localStorage.getItem('azureOpenAI_apiKey');
+        
+        // For demo purposes, return a mock response if no real configuration
+        if (!endpoint || !deploymentName || !apiKey) {
+            return generateMockChatResponse(question, documentText);
+        }
+        
+        // Build conversation context
+        const messages = [
+            {
+                role: 'system',
+                content: `You are a helpful assistant that answers questions about a document. Here is the document content:\n\n${documentText}\n\nPlease answer questions based on this document content. If the question cannot be answered from the document, politely explain that the information is not available in the provided document.`
+            }
+        ];
+        
+        // Add chat history
+        chatHistory.forEach(msg => {
+            messages.push({
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content
+            });
+        });
+        
+        // Add current question
+        messages.push({
+            role: 'user',
+            content: question
+        });
+        
+        const response = await fetch(`${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2023-05-15`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': apiKey
+            },
+            body: JSON.stringify({
+                messages: messages,
+                max_tokens: 500,
+                temperature: 0.7
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Azure OpenAI API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.choices[0].message.content;
+    }
+    
+    function generateMockChatResponse(question, documentText) {
+        // Generate a mock response for demo purposes
+        const questionLower = question.toLowerCase();
+        
+        if (questionLower.includes('summary') || questionLower.includes('summarize')) {
+            return `**Demo Response**: This document appears to be about ${extractKeywords(documentText).slice(0, 2).join(' and ')}. A full summary was provided earlier.`;
+        } else if (questionLower.includes('key') || questionLower.includes('main') || questionLower.includes('important')) {
+            return `**Demo Response**: Based on the document, the key points seem to relate to ${extractKeywords(documentText).slice(0, 3).join(', ')}. Please configure Azure OpenAI for detailed analysis.`;
+        } else if (questionLower.includes('what') || questionLower.includes('how') || questionLower.includes('why')) {
+            return `**Demo Response**: That's a great question about the document. In demo mode, I can see the document contains information about ${extractKeywords(documentText).slice(0, 2).join(' and ')}, but I'd need Azure OpenAI configuration to provide detailed answers.`;
+        } else {
+            return `**Demo Response**: I can see your question about "${question}". To provide accurate answers about your document, please configure Azure OpenAI settings in the Settings tab.`;
+        }
+    }
+    
+    function setupFileUpload() {
+        // Click to browse
+        browseBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        // Process button (now does both extraction and summarization)
+        processBtn.addEventListener('click', processFileAndGenerateSummary);
+        
+        // Clear button
+        clearBtn.addEventListener('click', clearFile);
+        
+        // Copy summary button
+        document.getElementById('copy-summary-btn').addEventListener('click', copySummary);
+        
+        // New file button
+        document.getElementById('new-file-btn').addEventListener('click', resetAISummary);
+    }
+    
+    function handleFileSelect(file) {
+        if (!file.type.includes('pdf') && !file.type.includes('image')) {
+            alert('Please select a PDF or image file.');
+            return;
+        }
+        
+        selectedFile = file;
+        document.getElementById('file-name').textContent = file.name;
+        document.getElementById('file-size').textContent = formatFileSize(file.size);
+        
+        uploadArea.style.display = 'none';
+        fileInfo.style.display = 'block';
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function clearFile() {
+        selectedFile = null;
+        fileInput.value = '';
+        uploadArea.style.display = 'block';
+        fileInfo.style.display = 'none';
+        hideProcessingCards();
+    }
+    
+    function hideProcessingCards() {
+        processingCard.style.display = 'none';
+        extractedTextCard.style.display = 'none';
+        summaryCard.style.display = 'none';
+        chatCard.style.display = 'none';
+    }
+    
+    async function processFileAndGenerateSummary() {
+        if (!selectedFile) return;
+        
+        showProcessing('Extracting text from your file...');
+        
+        try {
+            let extractedText = '';
+            
+            if (selectedFile.type.includes('pdf')) {
+                extractedText = await extractTextFromPDF(selectedFile);
+            } else if (selectedFile.type.includes('image')) {
+                extractedText = await extractTextFromImage(selectedFile);
+            }
+            
+            if (extractedText.trim()) {
+                document.getElementById('extracted-text').value = extractedText;
+                currentDocumentText = extractedText; // Store for chat
+                
+                // Show extracted text briefly, then proceed to summarization
+                showProcessing('Text extracted successfully. Generating AI summary...');
+                
+                // Generate summary automatically
+                const summary = await callAzureOpenAI(extractedText);
+                document.getElementById('summary-text').innerHTML = formatSummary(summary);
+                processingCard.style.display = 'none';
+                extractedTextCard.style.display = 'block';
+                summaryCard.style.display = 'block';
+                chatCard.style.display = 'block'; // Show chat interface
+                
+                // Clear previous chat history for new document
+                clearChatHistory();
+                
+            } else {
+                alert('No text could be extracted from the file.');
+                processingCard.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error processing file or generating summary:', error);
+            alert('Error processing file or generating summary. Please check your configuration and try again.');
+            processingCard.style.display = 'none';
+        }
+    }
+    
+    async function processFile() {
+        if (!selectedFile) return;
+        
+        showProcessing('Extracting text from your file...');
+        
+        try {
+            let extractedText = '';
+            
+            if (selectedFile.type.includes('pdf')) {
+                extractedText = await extractTextFromPDF(selectedFile);
+            } else if (selectedFile.type.includes('image')) {
+                extractedText = await extractTextFromImage(selectedFile);
+            }
+            
+            if (extractedText.trim()) {
+                document.getElementById('extracted-text').value = extractedText;
+                processingCard.style.display = 'none';
+                extractedTextCard.style.display = 'block';
+            } else {
+                alert('No text could be extracted from the file.');
+                processingCard.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error processing file:', error);
+            alert('Error processing file. Please try again.');
+            processingCard.style.display = 'none';
+        }
+    }
+    
+    function showProcessing(message) {
+        document.getElementById('processing-message').textContent = message;
+        processingCard.style.display = 'block';
+        extractedTextCard.style.display = 'none';
+        summaryCard.style.display = 'none';
+    }
+    
+    async function extractTextFromPDF(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const typedArray = new Uint8Array(e.target.result);
+                    const pdf = await pdfjsLib.getDocument(typedArray).promise;
+                    let fullText = '';
+                    
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\\n';
+                    }
+                    
+                    resolve(fullText);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+    
+    async function extractTextFromImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const result = await Tesseract.recognize(e.target.result, 'eng', {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                const progress = Math.round(m.progress * 100);
+                                document.getElementById('processing-message').textContent = 
+                                    `Extracting text from image... ${progress}%`;
+                            }
+                        }
+                    });
+                    resolve(result.data.text);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    async function generateSummary() {
+        const extractedText = document.getElementById('extracted-text').value;
+        if (!extractedText.trim()) {
+            alert('No text to summarize.');
+            return;
+        }
+        
+        showProcessing('Generating AI summary...');
+        
+        try {
+            const summary = await callAzureOpenAI(extractedText);
+            document.getElementById('summary-text').innerHTML = formatSummary(summary);
+            processingCard.style.display = 'none';
+            summaryCard.style.display = 'block';
+        } catch (error) {
+            console.error('Error generating summary:', error);
+            alert('Error generating summary. Please check your Azure OpenAI configuration.');
+            processingCard.style.display = 'none';
+        }
+    }
+    
+    async function callAzureOpenAI(text) {
+        // Get Azure OpenAI configuration from localStorage
+        const endpoint = localStorage.getItem('azureOpenAI_endpoint');
+        const deploymentName = localStorage.getItem('azureOpenAI_deploymentName');
+        const apiKey = localStorage.getItem('azureOpenAI_apiKey');
+        
+        // For demo purposes, return a mock summary if no real configuration
+        if (!endpoint || !deploymentName || !apiKey) {
+            return generateMockSummary(text);
+        }
+        
+        const response = await fetch(`${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2023-05-15`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': apiKey
+            },
+            body: JSON.stringify({
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are a helpful assistant that creates concise, well-structured summaries of text documents. Focus on the key points and main ideas.'
+                    },
+                    {
+                        role: 'user',
+                        content: `Please summarize the following text in a clear, concise manner with key points and main ideas:\\n\\n${text}`
+                    }
+                ],
+                max_tokens: 500,
+                temperature: 0.7
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Azure OpenAI API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.choices[0].message.content;
+    }
+    
+    function generateMockSummary(text) {
+        // Generate a mock summary for demo purposes
+        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+        const wordCount = text.split(/\\s+/).length;
+        
+        return `**Summary** (Demo Mode - Configure Azure OpenAI for real summarization)
+        
+**Key Points:**
+• Document contains approximately ${wordCount} words
+• ${sentences.length} sentences detected
+• Main topics appear to focus on ${extractKeywords(text).slice(0, 3).join(', ')}
+
+**Overview:**
+${sentences.slice(0, 3).join('. ')}.
+
+*Note: This is a demo summary. Please configure Azure OpenAI environment variables for AI-powered summarization.*`;
+    }
+    
+    function extractKeywords(text) {
+        const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should'];
+        const words = text.toLowerCase().match(/\\b\\w+\\b/g) || [];
+        const wordCount = {};
+        
+        words.forEach(word => {
+            if (word.length > 3 && !commonWords.includes(word)) {
+                wordCount[word] = (wordCount[word] || 0) + 1;
+            }
+        });
+        
+        return Object.entries(wordCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([word]) => word);
+    }
+    
+    function formatSummary(summary) {
+        return summary
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>')
+            .replace(/•/g, '•');
+    }
+    
+    function copySummary() {
+        const summaryText = document.getElementById('summary-text').innerText;
+        navigator.clipboard.writeText(summaryText).then(() => {
+            const btn = document.getElementById('copy-summary-btn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        });
+    }
+    
+    function resetAISummary() {
+        clearFile();
+        hideProcessingCards();
+        currentDocumentText = '';
+        clearChatHistory();
+    }
+}
+
+// Settings Functionality
+function initSettings() {
+    // Load existing settings
+    loadSettings();
+    
+    // Setup event listeners
+    document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+    document.getElementById('test-settings-btn').addEventListener('click', testConnection);
+    document.getElementById('reset-settings-btn').addEventListener('click', resetSettings);
+    
+    // Update status on load
+    updateSettingsStatus();
+}
+
+function loadSettings() {
+    const endpoint = localStorage.getItem('azureOpenAI_endpoint') || '';
+    const deploymentName = localStorage.getItem('azureOpenAI_deploymentName') || '';
+    const apiKey = localStorage.getItem('azureOpenAI_apiKey') || '';
+    
+    document.getElementById('azure-endpoint').value = endpoint;
+    document.getElementById('azure-deployment').value = deploymentName;
+    document.getElementById('azure-api-key').value = apiKey;
+}
+
+function saveSettings() {
+    const endpoint = document.getElementById('azure-endpoint').value.trim();
+    const deploymentName = document.getElementById('azure-deployment').value.trim();
+    const apiKey = document.getElementById('azure-api-key').value.trim();
+    
+    // Basic validation
+    if (endpoint && !isValidUrl(endpoint)) {
+        showSettingsMessage('Please enter a valid endpoint URL.', 'error');
+        return;
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('azureOpenAI_endpoint', endpoint);
+    localStorage.setItem('azureOpenAI_deploymentName', deploymentName);
+    localStorage.setItem('azureOpenAI_apiKey', apiKey);
+    
+    showSettingsMessage('Settings saved successfully!', 'success');
+    updateSettingsStatus();
+}
+
+function resetSettings() {
+    localStorage.removeItem('azureOpenAI_endpoint');
+    localStorage.removeItem('azureOpenAI_deploymentName');
+    localStorage.removeItem('azureOpenAI_apiKey');
+    
+    document.getElementById('azure-endpoint').value = '';
+    document.getElementById('azure-deployment').value = '';
+    document.getElementById('azure-api-key').value = '';
+    
+    showSettingsMessage('Settings reset to defaults.', 'success');
+    updateSettingsStatus();
+}
+
+async function testConnection() {
+    const endpoint = document.getElementById('azure-endpoint').value.trim();
+    const deploymentName = document.getElementById('azure-deployment').value.trim();
+    const apiKey = document.getElementById('azure-api-key').value.trim();
+    
+    if (!endpoint || !deploymentName || !apiKey) {
+        showSettingsMessage('Please fill in all fields before testing.', 'error');
+        return;
+    }
+    
+    const testBtn = document.getElementById('test-settings-btn');
+    const originalText = testBtn.textContent;
+    testBtn.textContent = 'Testing...';
+    testBtn.disabled = true;
+    
+    try {
+        const response = await fetch(`${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2023-05-15`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': apiKey
+            },
+            body: JSON.stringify({
+                messages: [
+                    {
+                        role: 'user',
+                        content: 'Hello'
+                    }
+                ],
+                max_tokens: 5
+            })
+        });
+        
+        if (response.ok) {
+            showSettingsMessage('Connection test successful!', 'success');
+        } else {
+            showSettingsMessage(`Connection test failed: ${response.status} ${response.statusText}`, 'error');
+        }
+    } catch (error) {
+        showSettingsMessage(`Connection test failed: ${error.message}`, 'error');
+    } finally {
+        testBtn.textContent = originalText;
+        testBtn.disabled = false;
+    }
+}
+
+function updateSettingsStatus() {
+    const endpoint = localStorage.getItem('azureOpenAI_endpoint');
+    const deploymentName = localStorage.getItem('azureOpenAI_deploymentName');
+    const apiKey = localStorage.getItem('azureOpenAI_apiKey');
+    
+    const configStatus = document.getElementById('config-status');
+    const modeStatus = document.getElementById('mode-status');
+    
+    if (endpoint && deploymentName && apiKey) {
+        configStatus.textContent = 'Configured';
+        configStatus.className = 'status-badge active';
+        modeStatus.textContent = 'Azure OpenAI Mode';
+    } else {
+        configStatus.textContent = 'Not Configured';
+        configStatus.className = 'status-badge';
+        modeStatus.textContent = 'Demo Mode';
+    }
+}
+
+function showSettingsMessage(message, type) {
+    const successElement = document.getElementById('settings-success');
+    const errorElement = document.getElementById('settings-error');
+    
+    // Hide both messages first
+    successElement.style.display = 'none';
+    errorElement.style.display = 'none';
+    
+    if (type === 'success') {
+        successElement.querySelector('p').textContent = message;
+        successElement.style.display = 'block';
+        setTimeout(() => {
+            successElement.style.display = 'none';
+        }, 3000);
+    } else if (type === 'error') {
+        errorElement.querySelector('p').textContent = message;
+        errorElement.style.display = 'block';
+        setTimeout(() => {
+            errorElement.style.display = 'none';
+        }, 5000);
+    }
+}
+
+function isValidUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
