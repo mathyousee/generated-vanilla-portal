@@ -412,3 +412,31 @@
     display: none;
   }
 }
+
+/* Account Details Styles */
+.account-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xl);
+  margin-top: var(--spacing-xl);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  justify-content: flex-start;
+}
+
+.loading-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-muted-foreground);
+}
+
+@media (max-width: 768px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+}

@@ -145,23 +145,59 @@
                     <p>Manage your personal information and account settings.</p>
                 </div>
                 
-                <div class="account-grid">
+                <!-- Loading state -->
+                <div id="account-loading" class="loading-state" style="display: none;">
+                    <p>Loading account information...</p>
+                </div>
+                
+                <!-- Error state -->
+                <div id="account-error" class="error-message" style="display: none;">
+                    <p>Error loading account information. Please try again.</p>
+                </div>
+                
+                <!-- Success message -->
+                <div id="account-success" class="success-message" style="display: none;">
+                    <p>Account information updated successfully!</p>
+                </div>
+                
+                <div class="account-grid" id="account-content">
                     <div class="card">
                         <div class="card-header">
                             <h3>Personal Information</h3>
+                            <button id="edit-personal-btn" class="btn btn-secondary">Edit</button>
                         </div>
                         <div class="card-content">
-                            <div class="info-group">
-                                <label>Full Name</label>
-                                <span>John Doe</span>
+                            <div id="personal-info-view">
+                                <div class="info-group">
+                                    <label>Full Name</label>
+                                    <span id="display-fullName">Loading...</span>
+                                </div>
+                                <div class="info-group">
+                                    <label>Email Address</label>
+                                    <span id="display-email">Loading...</span>
+                                </div>
+                                <div class="info-group">
+                                    <label>Phone Number</label>
+                                    <span id="display-phone">Loading...</span>
+                                </div>
                             </div>
-                            <div class="info-group">
-                                <label>Email Address</label>
-                                <span>john.doe@example.com</span>
-                            </div>
-                            <div class="info-group">
-                                <label>Phone Number</label>
-                                <span>+1 (555) 123-4567</span>
+                            <div id="personal-info-edit" style="display: none;">
+                                <div class="form-group">
+                                    <label for="edit-fullName">Full Name</label>
+                                    <input type="text" id="edit-fullName" name="fullName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-email">Email Address</label>
+                                    <input type="email" id="edit-email" name="email" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-phone">Phone Number</label>
+                                    <input type="tel" id="edit-phone" name="phone" required>
+                                </div>
+                                <div class="form-actions">
+                                    <button id="save-personal-btn" class="btn btn-primary">Save Changes</button>
+                                    <button id="cancel-personal-btn" class="btn btn-secondary">Cancel</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -169,19 +205,44 @@
                     <div class="card">
                         <div class="card-header">
                             <h3>Subscription Details</h3>
+                            <button id="edit-subscription-btn" class="btn btn-secondary">Edit</button>
                         </div>
                         <div class="card-content">
-                            <div class="info-group">
-                                <label>Plan Type</label>
-                                <span>Premium Plan</span>
+                            <div id="subscription-info-view">
+                                <div class="info-group">
+                                    <label>Plan Type</label>
+                                    <span id="display-planType">Loading...</span>
+                                </div>
+                                <div class="info-group">
+                                    <label>Next Billing Date</label>
+                                    <span id="display-nextBillingDate">Loading...</span>
+                                </div>
+                                <div class="info-group">
+                                    <label>Monthly Cost</label>
+                                    <span id="display-monthlyCost">Loading...</span>
+                                </div>
                             </div>
-                            <div class="info-group">
-                                <label>Next Billing Date</label>
-                                <span>August 9, 2025</span>
-                            </div>
-                            <div class="info-group">
-                                <label>Monthly Cost</label>
-                                <span>$29.99</span>
+                            <div id="subscription-info-edit" style="display: none;">
+                                <div class="form-group">
+                                    <label for="edit-planType">Plan Type</label>
+                                    <select id="edit-planType" name="planType" required>
+                                        <option value="Basic Plan">Basic Plan</option>
+                                        <option value="Premium Plan">Premium Plan</option>
+                                        <option value="Enterprise Plan">Enterprise Plan</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-nextBillingDate">Next Billing Date</label>
+                                    <input type="date" id="edit-nextBillingDate" name="nextBillingDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-monthlyCost">Monthly Cost</label>
+                                    <input type="text" id="edit-monthlyCost" name="monthlyCost" required pattern="^\$\d+\.\d{2}$">
+                                </div>
+                                <div class="form-actions">
+                                    <button id="save-subscription-btn" class="btn btn-primary">Save Changes</button>
+                                    <button id="cancel-subscription-btn" class="btn btn-secondary">Cancel</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -222,6 +283,7 @@
         </main>
     </div>
 
+    <script src="js/auth.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>
