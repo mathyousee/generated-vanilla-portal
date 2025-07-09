@@ -635,14 +635,11 @@ function initAISummary() {
             }
         });
         
-        // Process button
-        processBtn.addEventListener('click', processFile);
+        // Process button (now does both extraction and summarization)
+        processBtn.addEventListener('click', processFileAndGenerateSummary);
         
         // Clear button
         clearBtn.addEventListener('click', clearFile);
-        
-        // Summarize button
-        document.getElementById('summarize-btn').addEventListener('click', generateSummary);
         
         // Copy summary button
         document.getElementById('copy-summary-btn').addEventListener('click', copySummary);
@@ -685,6 +682,44 @@ function initAISummary() {
         processingCard.style.display = 'none';
         extractedTextCard.style.display = 'none';
         summaryCard.style.display = 'none';
+    }
+    
+    async function processFileAndGenerateSummary() {
+        if (!selectedFile) return;
+        
+        showProcessing('Extracting text from your file...');
+        
+        try {
+            let extractedText = '';
+            
+            if (selectedFile.type.includes('pdf')) {
+                extractedText = await extractTextFromPDF(selectedFile);
+            } else if (selectedFile.type.includes('image')) {
+                extractedText = await extractTextFromImage(selectedFile);
+            }
+            
+            if (extractedText.trim()) {
+                document.getElementById('extracted-text').value = extractedText;
+                
+                // Show extracted text briefly, then proceed to summarization
+                showProcessing('Text extracted successfully. Generating AI summary...');
+                
+                // Generate summary automatically
+                const summary = await callAzureOpenAI(extractedText);
+                document.getElementById('summary-text').innerHTML = formatSummary(summary);
+                processingCard.style.display = 'none';
+                extractedTextCard.style.display = 'block';
+                summaryCard.style.display = 'block';
+                
+            } else {
+                alert('No text could be extracted from the file.');
+                processingCard.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error processing file or generating summary:', error);
+            alert('Error processing file or generating summary. Please check your configuration and try again.');
+            processingCard.style.display = 'none';
+        }
     }
     
     async function processFile() {
@@ -872,9 +907,9 @@ ${sentences.slice(0, 3).join('. ')}.
     
     function formatSummary(summary) {
         return summary
-            .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-            .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
-            .replace(/\\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>')
             .replace(/•/g, '•');
     }
     
