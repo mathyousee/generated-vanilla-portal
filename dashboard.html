@@ -27,7 +27,7 @@
                 </div>
                 <div class="user-menu">
                     <span id="userName">John Doe</span>
-                    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                    <button id="logoutBtn" class="btn btn-secondary" type="button">Logout</button>
                 </div>
             </div>
         </header>
@@ -75,7 +75,7 @@
                     <h1>Dashboard</h1>
                     <p>Welcome back, John! Here's an overview of your account.</p>
                 </div>
-                
+
                 <div class="dashboard-grid">
                     <div class="card">
                         <div class="card-header">
@@ -144,27 +144,27 @@
                     <h1>Account Details</h1>
                     <p>Manage your personal information and account settings.</p>
                 </div>
-                
+
                 <!-- Loading state -->
                 <div id="account-loading" class="loading-state" style="display: none;">
                     <p>Loading account information...</p>
                 </div>
-                
+
                 <!-- Error state -->
                 <div id="account-error" class="error-message" style="display: none;">
                     <p>Error loading account information. Please try again.</p>
                 </div>
-                
+
                 <!-- Success message -->
                 <div id="account-success" class="success-message" style="display: none;">
                     <p>Account information updated successfully!</p>
                 </div>
-                
+
                 <div class="account-grid" id="account-content">
                     <div class="card">
                         <div class="card-header">
                             <h3>Personal Information</h3>
-                            <button id="edit-personal-btn" class="btn btn-secondary">Edit</button>
+                            <button id="edit-personal-btn" class="btn btn-secondary" type="button">Edit</button>
                         </div>
                         <div class="card-content">
                             <div id="personal-info-view">
@@ -195,8 +195,8 @@
                                     <input type="tel" id="edit-phone" name="phone" required>
                                 </div>
                                 <div class="form-actions">
-                                    <button id="save-personal-btn" class="btn btn-primary">Save Changes</button>
-                                    <button id="cancel-personal-btn" class="btn btn-secondary">Cancel</button>
+                                    <button id="save-personal-btn" class="btn btn-primary" type="button">Save Changes</button>
+                                    <button id="cancel-personal-btn" class="btn btn-secondary" type="button">Cancel</button>
                                 </div>
                             </div>
                         </div>
@@ -205,7 +205,7 @@
                     <div class="card">
                         <div class="card-header">
                             <h3>Subscription Details</h3>
-                            <button id="edit-subscription-btn" class="btn btn-secondary">Edit</button>
+                            <button id="edit-subscription-btn" class="btn btn-secondary" type="button">Edit</button>
                         </div>
                         <div class="card-content">
                             <div id="subscription-info-view">
@@ -240,8 +240,8 @@
                                     <input type="text" id="edit-monthlyCost" name="monthlyCost" required pattern="^\$\d+\.\d{2}$">
                                 </div>
                                 <div class="form-actions">
-                                    <button id="save-subscription-btn" class="btn btn-primary">Save Changes</button>
-                                    <button id="cancel-subscription-btn" class="btn btn-secondary">Cancel</button>
+                                    <button id="save-subscription-btn" class="btn btn-primary" type="button">Save Changes</button>
+                                    <button id="cancel-subscription-btn" class="btn btn-secondary" type="button">Cancel</button>
                                 </div>
                             </div>
                         </div>
@@ -255,7 +255,7 @@
                     <h1>Billing History</h1>
                     <p>View your transaction history and download invoices.</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header">
                         <h3>Transaction History</h3>
@@ -265,11 +265,11 @@
                             <table class="billing-table">
                                 <thead>
                                     <tr>
-                                        <th>Date</th>
-                                        <th>Description</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                        <th>Invoice</th>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Description</th>
+                                        <th scope="col">Amount</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Invoice</th>
                                     </tr>
                                 </thead>
                                 <tbody id="billingTableBody">
