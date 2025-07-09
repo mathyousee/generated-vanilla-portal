@@ -1,0 +1,41 @@
+{
+  "name": "customer-portal",
+  "version": "1.0.0",
+  "description": "A secure customer portal for Azure Static Web Apps",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server -p 8000 -o",
+    "build": "echo 'No build process needed for vanilla HTML/CSS/JS'",
+    "validate": "npx html-validate index.html dashboard.html",
+    "lint:css": "npx stylelint 'css/**/*.css'",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "customer-portal",
+    "azure",
+    "static-web-apps",
+    "vanilla-js",
+    "responsive"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "html-validate": "^8.7.4",
+    "stylelint": "^15.11.0",
+    "stylelint-config-standard": "^34.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/customer-portal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/customer-portal/issues"
+  },
+  "homepage": "https://github.com/yourusername/customer-portal#readme"
+}

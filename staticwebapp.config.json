@@ -1,0 +1,32 @@
+{
+  "routes": [
+    {
+      "route": "/",
+      "serve": "/index.html"
+    },
+    {
+      "route": "/dashboard",
+      "serve": "/dashboard.html"
+    },
+    {
+      "route": "/dashboard.html",
+      "serve": "/dashboard.html"
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/css/*", "/js/*", "/*.{css,js,json,ico,png,jpg,jpeg,gif,svg}"]
+  },
+  "mimeTypes": {
+    ".json": "application/json",
+    ".css": "text/css",
+    ".js": "application/javascript",
+    ".html": "text/html"
+  },
+  "globalHeaders": {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "X-XSS-Protection": "1; mode=block",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+  }
+}
