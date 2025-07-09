@@ -1,23 +1,27 @@
 # AI Summary Feature Configuration
 
-## Environment Variables
+## Configuration
 
-To enable real Azure OpenAI integration, configure the following environment variables in your Azure Static Web Apps:
+To enable real Azure OpenAI integration, you can configure the following variables:
 
 ### Required Variables
 
-```bash
-AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
-AZURE_OPENAI_API_KEY=your-api-key
+For client-side configuration, set these as global variables in your application:
+
+```javascript
+// Add these to your HTML before loading dashboard.js
+window.AZURE_OPENAI_ENDPOINT = 'https://your-resource-name.openai.azure.com';
+window.AZURE_OPENAI_DEPLOYMENT_NAME = 'your-deployment-name';
+window.AZURE_OPENAI_API_KEY = 'your-api-key';
 ```
 
-### Configuration in Azure Static Web Apps
+**Security Note**: Since this is a client-side application, API keys will be visible to users. For production use, consider implementing a backend proxy service to securely handle Azure OpenAI API calls.
 
-1. Go to your Azure Static Web App resource in the Azure Portal
-2. Navigate to "Configuration" in the left sidebar
-3. Click "Application settings"
-4. Add the three environment variables above with your Azure OpenAI values
+### Alternative Configuration Methods
+
+1. **Environment Variables (Build Time)**: Configure during build process if using a bundler
+2. **Configuration File**: Create a separate config.js file with your settings
+3. **Backend Proxy**: Implement a secure backend service to handle API calls
 
 ### Demo Mode
 

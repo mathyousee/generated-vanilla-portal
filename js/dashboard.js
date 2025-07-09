@@ -788,10 +788,12 @@ function initAISummary() {
     }
     
     async function callAzureOpenAI(text) {
-        // Get Azure OpenAI configuration from environment variables
-        const endpoint = process.env.AZURE_OPENAI_ENDPOINT || 'your-azure-openai-endpoint';
-        const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'your-deployment-name';
-        const apiKey = process.env.AZURE_OPENAI_API_KEY || 'your-api-key';
+        // Get Azure OpenAI configuration
+        // Note: In a browser environment, these would typically be set at build time
+        // or configured through your deployment process
+        const endpoint = window.AZURE_OPENAI_ENDPOINT || 'your-azure-openai-endpoint';
+        const deploymentName = window.AZURE_OPENAI_DEPLOYMENT_NAME || 'your-deployment-name';
+        const apiKey = window.AZURE_OPENAI_API_KEY || 'your-api-key';
         
         // For demo purposes, return a mock summary if no real configuration
         if (!endpoint || endpoint === 'your-azure-openai-endpoint' || !apiKey || apiKey === 'your-api-key') {
