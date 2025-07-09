@@ -595,12 +595,218 @@ function initAISummary() {
     const processingCard = document.getElementById('processing-card');
     const extractedTextCard = document.getElementById('extracted-text-card');
     const summaryCard = document.getElementById('summary-card');
+    const chatCard = document.getElementById('chat-card');
     
     let selectedFile = null;
+    let currentDocumentText = '';
+    let chatHistory = [];
     
     // Initialize AI Summary when section is accessed
     if (uploadArea && fileInput) {
         setupFileUpload();
+        setupCollapsibleHeader();
+        setupChatInterface();
+    }
+    
+    function setupCollapsibleHeader() {
+        const header = document.getElementById('extracted-text-header');
+        const content = document.getElementById('extracted-text-content');
+        
+        if (header && content) {
+            header.addEventListener('click', () => {
+                const isExpanded = header.classList.contains('expanded');
+                
+                if (isExpanded) {
+                    header.classList.remove('expanded');
+                    content.style.display = 'none';
+                } else {
+                    header.classList.add('expanded');
+                    content.style.display = 'block';
+                }
+            });
+        }
+    }
+    
+    function setupChatInterface() {
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-chat-btn');
+        const chatMessages = document.getElementById('chat-messages');
+        
+        if (chatInput && sendBtn) {
+            // Enable/disable send button based on input
+            chatInput.addEventListener('input', () => {
+                sendBtn.disabled = !chatInput.value.trim();
+            });
+            
+            // Send on Enter key
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey && chatInput.value.trim()) {
+                    e.preventDefault();
+                    sendChatMessage();
+                }
+            });
+            
+            // Send on button click
+            sendBtn.addEventListener('click', sendChatMessage);
+        }
+    }
+    
+    async function sendChatMessage() {
+        const chatInput = document.getElementById('chat-input');
+        const message = chatInput.value.trim();
+        
+        if (!message || !currentDocumentText) return;
+        
+        // Add user message to chat
+        addChatMessage('user', message);
+        
+        // Clear input and disable send button
+        chatInput.value = '';
+        document.getElementById('send-chat-btn').disabled = true;
+        
+        // Add loading message
+        const loadingMessageId = addChatMessage('assistant', '', true);
+        
+        try {
+            // Get AI response
+            const response = await askDocumentQuestion(message, currentDocumentText);
+            
+            // Remove loading message and add actual response
+            removeChatMessage(loadingMessageId);
+            addChatMessage('assistant', response);
+            
+        } catch (error) {
+            console.error('Error getting chat response:', error);
+            removeChatMessage(loadingMessageId);
+            addChatMessage('assistant', 'Sorry, I encountered an error while processing your question. Please try again.');
+        }
+    }
+    
+    function addChatMessage(role, content, isLoading = false) {
+        const chatMessages = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        
+        messageDiv.id = messageId;
+        messageDiv.className = `chat-message ${role}-message`;
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        if (isLoading) {
+            messageContent.innerHTML = `
+                <div class="message-loading">
+                    <span>AI is thinking</span>
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+        } else {
+            messageContent.innerHTML = formatSummary(content);
+        }
+        
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Store in chat history
+        if (!isLoading) {
+            chatHistory.push({ role, content });
+        }
+        
+        return messageId;
+    }
+    
+    function removeChatMessage(messageId) {
+        const messageElement = document.getElementById(messageId);
+        if (messageElement) {
+            messageElement.remove();
+        }
+    }
+    
+    function clearChatHistory() {
+        const chatMessages = document.getElementById('chat-messages');
+        // Keep only the system message
+        const systemMessage = chatMessages.querySelector('.system-message');
+        chatMessages.innerHTML = '';
+        if (systemMessage) {
+            chatMessages.appendChild(systemMessage);
+        }
+        chatHistory = [];
+    }
+    
+    async function askDocumentQuestion(question, documentText) {
+        // Get Azure OpenAI configuration from localStorage
+        const endpoint = localStorage.getItem('azureOpenAI_endpoint');
+        const deploymentName = localStorage.getItem('azureOpenAI_deploymentName');
+        const apiKey = localStorage.getItem('azureOpenAI_apiKey');
+        
+        // For demo purposes, return a mock response if no real configuration
+        if (!endpoint || !deploymentName || !apiKey) {
+            return generateMockChatResponse(question, documentText);
+        }
+        
+        // Build conversation context
+        const messages = [
+            {
+                role: 'system',
+                content: `You are a helpful assistant that answers questions about a document. Here is the document content:\n\n${documentText}\n\nPlease answer questions based on this document content. If the question cannot be answered from the document, politely explain that the information is not available in the provided document.`
+            }
+        ];
+        
+        // Add chat history
+        chatHistory.forEach(msg => {
+            messages.push({
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content
+            });
+        });
+        
+        // Add current question
+        messages.push({
+            role: 'user',
+            content: question
+        });
+        
+        const response = await fetch(`${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2023-05-15`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': apiKey
+            },
+            body: JSON.stringify({
+                messages: messages,
+                max_tokens: 500,
+                temperature: 0.7
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Azure OpenAI API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.choices[0].message.content;
+    }
+    
+    function generateMockChatResponse(question, documentText) {
+        // Generate a mock response for demo purposes
+        const questionLower = question.toLowerCase();
+        
+        if (questionLower.includes('summary') || questionLower.includes('summarize')) {
+            return `**Demo Response**: This document appears to be about ${extractKeywords(documentText).slice(0, 2).join(' and ')}. A full summary was provided earlier.`;
+        } else if (questionLower.includes('key') || questionLower.includes('main') || questionLower.includes('important')) {
+            return `**Demo Response**: Based on the document, the key points seem to relate to ${extractKeywords(documentText).slice(0, 3).join(', ')}. Please configure Azure OpenAI for detailed analysis.`;
+        } else if (questionLower.includes('what') || questionLower.includes('how') || questionLower.includes('why')) {
+            return `**Demo Response**: That's a great question about the document. In demo mode, I can see the document contains information about ${extractKeywords(documentText).slice(0, 2).join(' and ')}, but I'd need Azure OpenAI configuration to provide detailed answers.`;
+        } else {
+            return `**Demo Response**: I can see your question about "${question}". To provide accurate answers about your document, please configure Azure OpenAI settings in the Settings tab.`;
+        }
     }
     
     function setupFileUpload() {
@@ -682,6 +888,7 @@ function initAISummary() {
         processingCard.style.display = 'none';
         extractedTextCard.style.display = 'none';
         summaryCard.style.display = 'none';
+        chatCard.style.display = 'none';
     }
     
     async function processFileAndGenerateSummary() {
@@ -700,6 +907,7 @@ function initAISummary() {
             
             if (extractedText.trim()) {
                 document.getElementById('extracted-text').value = extractedText;
+                currentDocumentText = extractedText; // Store for chat
                 
                 // Show extracted text briefly, then proceed to summarization
                 showProcessing('Text extracted successfully. Generating AI summary...');
@@ -710,6 +918,10 @@ function initAISummary() {
                 processingCard.style.display = 'none';
                 extractedTextCard.style.display = 'block';
                 summaryCard.style.display = 'block';
+                chatCard.style.display = 'block'; // Show chat interface
+                
+                // Clear previous chat history for new document
+                clearChatHistory();
                 
             } else {
                 alert('No text could be extracted from the file.');
@@ -928,6 +1140,8 @@ ${sentences.slice(0, 3).join('. ')}.
     function resetAISummary() {
         clearFile();
         hideProcessingCards();
+        currentDocumentText = '';
+        clearChatHistory();
     }
 }
 
