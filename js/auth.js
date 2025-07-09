@@ -1,5 +1,7 @@
 // Authentication functionality
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Auth page loaded at:', new Date().toISOString());
+    
     const loginForm = document.getElementById('loginForm');
     const errorMessage = document.getElementById('errorMessage');
     
@@ -9,10 +11,19 @@ document.addEventListener('DOMContentLoaded', function() {
         password: 'password123'
     };
     
-    // Check if user is already logged in
-    if (isLoggedIn()) {
-        window.location.href = 'dashboard.html';
-        return;
+    // Check if user is already logged in - with a small delay to avoid redirect loops
+    setTimeout(() => {
+        if (isLoggedIn() && !window.location.href.includes('dashboard.html')) {
+            console.log('User already logged in, redirecting to dashboard');
+            window.location.href = 'dashboard.html';
+            return;
+        }
+        console.log('User not logged in, showing login form');
+    }, 10);
+    
+    if (!loginForm) {
+        console.log('No login form found, not on login page');
+        return; // Exit if not on login page
     }
     
     loginForm.addEventListener('submit', function(e) {
@@ -41,6 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
                 // Successful login
+                console.log('Login successful, redirecting to dashboard');
                 login(email);
                 window.location.href = 'dashboard.html';
             } else {
@@ -56,25 +68,33 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
-        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (errorMessage) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            errorMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
     
     function hideError() {
-        errorMessage.style.display = 'none';
+        if (errorMessage) {
+            errorMessage.style.display = 'none';
+        }
     }
     
     function showLoading() {
         const submitButton = loginForm.querySelector('button[type="submit"]');
-        submitButton.textContent = 'Signing In...';
-        submitButton.disabled = true;
+        if (submitButton) {
+            submitButton.textContent = 'Signing In...';
+            submitButton.disabled = true;
+        }
     }
     
     function hideLoading() {
         const submitButton = loginForm.querySelector('button[type="submit"]');
-        submitButton.textContent = 'Sign In';
-        submitButton.disabled = false;
+        if (submitButton) {
+            submitButton.textContent = 'Sign In';
+            submitButton.disabled = false;
+        }
     }
 });
 
@@ -97,12 +117,22 @@ function logout() {
 }
 
 function isLoggedIn() {
-    return localStorage.getItem('isLoggedIn') === 'true';
+    try {
+        return localStorage.getItem('isLoggedIn') === 'true';
+    } catch (e) {
+        console.error('Error checking login status:', e);
+        return false;
+    }
 }
 
 function getCurrentUser() {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    try {
+        const userStr = localStorage.getItem('user');
+        return userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+        console.error('Error getting current user:', e);
+        return null;
+    }
 }
 
 // Session timeout handling

@@ -1,0 +1,12 @@
+{
+  "personalInfo": {
+    "fullName": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "+1 (555) 123-4567"
+  },
+  "subscription": {
+    "planType": "Premium Plan",
+    "nextBillingDate": "August 9, 2025",
+    "monthlyCost": "$29.99"
+  }
+}
