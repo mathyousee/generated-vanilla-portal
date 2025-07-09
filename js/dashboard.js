@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadBillingHistory();
         initAccountDetails();
         initAISummary();
+        initSettings();
         
         // Setup logout functionality
         const logoutBtn = document.getElementById('logoutBtn');
@@ -86,7 +87,7 @@ function initNavigation() {
     
     // Handle initial navigation based on hash - only once
     const hash = window.location.hash.substring(1);
-    if (hash && ['dashboard', 'account', 'billing', 'ai-summary'].includes(hash)) {
+    if (hash && ['dashboard', 'account', 'billing', 'ai-summary', 'settings'].includes(hash)) {
         showSection(hash);
     }
 }
@@ -566,6 +567,12 @@ document.addEventListener('keydown', function(e) {
         document.querySelector('[data-section="ai-summary"]').click();
     }
     
+    // Alt + T for Settings
+    if (e.altKey && e.key === 't') {
+        e.preventDefault();
+        document.querySelector('[data-section="settings"]').click();
+    }
+    
     // Escape to go back to dashboard
     if (e.key === 'Escape') {
         document.querySelector('[data-section="dashboard"]').click();
@@ -788,15 +795,13 @@ function initAISummary() {
     }
     
     async function callAzureOpenAI(text) {
-        // Get Azure OpenAI configuration
-        // Note: In a browser environment, these would typically be set at build time
-        // or configured through your deployment process
-        const endpoint = window.AZURE_OPENAI_ENDPOINT || 'your-azure-openai-endpoint';
-        const deploymentName = window.AZURE_OPENAI_DEPLOYMENT_NAME || 'your-deployment-name';
-        const apiKey = window.AZURE_OPENAI_API_KEY || 'your-api-key';
+        // Get Azure OpenAI configuration from localStorage
+        const endpoint = localStorage.getItem('azureOpenAI_endpoint');
+        const deploymentName = localStorage.getItem('azureOpenAI_deploymentName');
+        const apiKey = localStorage.getItem('azureOpenAI_apiKey');
         
         // For demo purposes, return a mock summary if no real configuration
-        if (!endpoint || endpoint === 'your-azure-openai-endpoint' || !apiKey || apiKey === 'your-api-key') {
+        if (!endpoint || !deploymentName || !apiKey) {
             return generateMockSummary(text);
         }
         
@@ -888,5 +893,159 @@ ${sentences.slice(0, 3).join('. ')}.
     function resetAISummary() {
         clearFile();
         hideProcessingCards();
+    }
+}
+
+// Settings Functionality
+function initSettings() {
+    // Load existing settings
+    loadSettings();
+    
+    // Setup event listeners
+    document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+    document.getElementById('test-settings-btn').addEventListener('click', testConnection);
+    document.getElementById('reset-settings-btn').addEventListener('click', resetSettings);
+    
+    // Update status on load
+    updateSettingsStatus();
+}
+
+function loadSettings() {
+    const endpoint = localStorage.getItem('azureOpenAI_endpoint') || '';
+    const deploymentName = localStorage.getItem('azureOpenAI_deploymentName') || '';
+    const apiKey = localStorage.getItem('azureOpenAI_apiKey') || '';
+    
+    document.getElementById('azure-endpoint').value = endpoint;
+    document.getElementById('azure-deployment').value = deploymentName;
+    document.getElementById('azure-api-key').value = apiKey;
+}
+
+function saveSettings() {
+    const endpoint = document.getElementById('azure-endpoint').value.trim();
+    const deploymentName = document.getElementById('azure-deployment').value.trim();
+    const apiKey = document.getElementById('azure-api-key').value.trim();
+    
+    // Basic validation
+    if (endpoint && !isValidUrl(endpoint)) {
+        showSettingsMessage('Please enter a valid endpoint URL.', 'error');
+        return;
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('azureOpenAI_endpoint', endpoint);
+    localStorage.setItem('azureOpenAI_deploymentName', deploymentName);
+    localStorage.setItem('azureOpenAI_apiKey', apiKey);
+    
+    showSettingsMessage('Settings saved successfully!', 'success');
+    updateSettingsStatus();
+}
+
+function resetSettings() {
+    localStorage.removeItem('azureOpenAI_endpoint');
+    localStorage.removeItem('azureOpenAI_deploymentName');
+    localStorage.removeItem('azureOpenAI_apiKey');
+    
+    document.getElementById('azure-endpoint').value = '';
+    document.getElementById('azure-deployment').value = '';
+    document.getElementById('azure-api-key').value = '';
+    
+    showSettingsMessage('Settings reset to defaults.', 'success');
+    updateSettingsStatus();
+}
+
+async function testConnection() {
+    const endpoint = document.getElementById('azure-endpoint').value.trim();
+    const deploymentName = document.getElementById('azure-deployment').value.trim();
+    const apiKey = document.getElementById('azure-api-key').value.trim();
+    
+    if (!endpoint || !deploymentName || !apiKey) {
+        showSettingsMessage('Please fill in all fields before testing.', 'error');
+        return;
+    }
+    
+    const testBtn = document.getElementById('test-settings-btn');
+    const originalText = testBtn.textContent;
+    testBtn.textContent = 'Testing...';
+    testBtn.disabled = true;
+    
+    try {
+        const response = await fetch(`${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2023-05-15`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': apiKey
+            },
+            body: JSON.stringify({
+                messages: [
+                    {
+                        role: 'user',
+                        content: 'Hello'
+                    }
+                ],
+                max_tokens: 5
+            })
+        });
+        
+        if (response.ok) {
+            showSettingsMessage('Connection test successful!', 'success');
+        } else {
+            showSettingsMessage(`Connection test failed: ${response.status} ${response.statusText}`, 'error');
+        }
+    } catch (error) {
+        showSettingsMessage(`Connection test failed: ${error.message}`, 'error');
+    } finally {
+        testBtn.textContent = originalText;
+        testBtn.disabled = false;
+    }
+}
+
+function updateSettingsStatus() {
+    const endpoint = localStorage.getItem('azureOpenAI_endpoint');
+    const deploymentName = localStorage.getItem('azureOpenAI_deploymentName');
+    const apiKey = localStorage.getItem('azureOpenAI_apiKey');
+    
+    const configStatus = document.getElementById('config-status');
+    const modeStatus = document.getElementById('mode-status');
+    
+    if (endpoint && deploymentName && apiKey) {
+        configStatus.textContent = 'Configured';
+        configStatus.className = 'status-badge active';
+        modeStatus.textContent = 'Azure OpenAI Mode';
+    } else {
+        configStatus.textContent = 'Not Configured';
+        configStatus.className = 'status-badge';
+        modeStatus.textContent = 'Demo Mode';
+    }
+}
+
+function showSettingsMessage(message, type) {
+    const successElement = document.getElementById('settings-success');
+    const errorElement = document.getElementById('settings-error');
+    
+    // Hide both messages first
+    successElement.style.display = 'none';
+    errorElement.style.display = 'none';
+    
+    if (type === 'success') {
+        successElement.querySelector('p').textContent = message;
+        successElement.style.display = 'block';
+        setTimeout(() => {
+            successElement.style.display = 'none';
+        }, 3000);
+    } else if (type === 'error') {
+        errorElement.querySelector('p').textContent = message;
+        errorElement.style.display = 'block';
+        setTimeout(() => {
+            errorElement.style.display = 'none';
+        }, 5000);
+    }
+}
+
+function isValidUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
     }
 }

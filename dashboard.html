@@ -80,6 +80,15 @@
                         AI Summary
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="#settings" class="nav-link" data-section="settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                        </svg>
+                        Settings
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -364,6 +373,70 @@
                                 <div class="summary-actions">
                                     <button type="button" id="copy-summary-btn" class="btn btn-secondary">Copy Summary</button>
                                     <button type="button" id="new-file-btn" class="btn btn-primary">Process New File</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section">
+                <div class="section-header">
+                    <h1>Settings</h1>
+                    <p>Configure Azure OpenAI settings for AI Summary functionality.</p>
+                </div>
+
+                <div class="settings-container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Azure OpenAI Configuration</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="settings-form">
+                                <div class="form-group">
+                                    <label for="azure-endpoint">Azure OpenAI Endpoint</label>
+                                    <input type="url" id="azure-endpoint" name="azure-endpoint" placeholder="https://your-resource-name.openai.azure.com">
+                                    <small class="form-help">Your Azure OpenAI resource endpoint URL</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="azure-deployment">Deployment Name</label>
+                                    <input type="text" id="azure-deployment" name="azure-deployment" placeholder="your-deployment-name">
+                                    <small class="form-help">The name of your Azure OpenAI model deployment</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="azure-api-key">API Key</label>
+                                    <input type="password" id="azure-api-key" name="azure-api-key" placeholder="your-api-key">
+                                    <small class="form-help">Your Azure OpenAI API key (stored securely in browser)</small>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" id="save-settings-btn" class="btn btn-primary">Save Settings</button>
+                                    <button type="button" id="test-settings-btn" class="btn btn-secondary">Test Connection</button>
+                                    <button type="button" id="reset-settings-btn" class="btn btn-secondary">Reset to Defaults</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Current Status</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="settings-status">
+                                <div class="status-item">
+                                    <span class="status-label">Configuration Status:</span>
+                                    <span id="config-status" class="status-badge">Not Configured</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Mode:</span>
+                                    <span id="mode-status" class="status-value">Demo Mode</span>
+                                </div>
+                                <div id="settings-success" class="success-message" style="display: none;">
+                                    <p>Settings saved successfully!</p>
+                                </div>
+                                <div id="settings-error" class="error-message" style="display: none;">
+                                    <p>Error saving settings. Please try again.</p>
                                 </div>
                             </div>
                         </div>

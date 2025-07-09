@@ -565,3 +565,125 @@
     width: 100%;
   }
 }
+
+/* Settings Styles */
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+}
+
+.form-group input {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  transition: border-color var(--transition-fast);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px oklch(from var(--color-accent) l c h / 0.1);
+}
+
+.form-help {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  margin-top: var(--spacing-xs);
+}
+
+.settings-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.status-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+}
+
+.status-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.status-badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  background-color: var(--color-muted);
+  color: var(--color-muted-foreground);
+}
+
+.status-badge.active {
+  background-color: oklch(0.9 0.1 140);
+  color: oklch(0.3 0.15 140);
+}
+
+.success-message {
+  padding: var(--spacing-md);
+  border-radius: var(--radius);
+  background-color: oklch(0.9 0.1 140);
+  color: oklch(0.3 0.15 140);
+  border: 1px solid oklch(0.8 0.1 140);
+  margin-top: var(--spacing-md);
+}
+
+.error-message {
+  padding: var(--spacing-md);
+  border-radius: var(--radius);
+  background-color: oklch(0.9 0.1 0);
+  color: oklch(0.3 0.15 0);
+  border: 1px solid oklch(0.8 0.1 0);
+  margin-top: var(--spacing-md);
+}
+
+.success-message p,
+.error-message p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+  .settings-container {
+    gap: var(--spacing-md);
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+  }
+}
