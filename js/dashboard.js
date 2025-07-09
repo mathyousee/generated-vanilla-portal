@@ -1,21 +1,33 @@
 // Dashboard functionality
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is logged in
-    if (!isLoggedIn()) {
-        window.location.href = 'index.html';
-        return;
-    }
+    console.log('Dashboard page loaded at:', new Date().toISOString());
     
-    // Initialize dashboard
-    initDashboard();
-    initNavigation();
-    initSessionTimeout();
-    loadBillingHistory();
-    initAccountDetails();
-    
-    // Setup logout functionality
-    const logoutBtn = document.getElementById('logoutBtn');
-    logoutBtn.addEventListener('click', logout);
+    // Add a small delay to ensure localStorage is ready
+    setTimeout(() => {
+        // Check if user is logged in
+        if (!isLoggedIn()) {
+            console.log('User not logged in, redirecting to index.html');
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        console.log('User is logged in, initializing dashboard...');
+        
+        // Initialize dashboard
+        initDashboard();
+        initNavigation();
+        initSessionTimeout();
+        loadBillingHistory();
+        initAccountDetails();
+        
+        // Setup logout functionality
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', logout);
+        }
+        
+        console.log('Dashboard initialization complete');
+    }, 10);
 });
 
 function initDashboard() {
@@ -28,39 +40,53 @@ function initDashboard() {
 function initNavigation() {
     const navLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('.content-section');
+    let isNavigating = false;
+    
+    function showSection(targetSection) {
+        if (isNavigating) return;
+        isNavigating = true;
+        
+        // Update active navigation
+        const currentActive = document.querySelector('.nav-item.active');
+        if (currentActive) {
+            currentActive.classList.remove('active');
+        }
+        
+        const targetLink = document.querySelector(`[data-section="${targetSection}"]`);
+        if (targetLink) {
+            targetLink.parentElement.classList.add('active');
+        }
+        
+        // Show target section
+        sections.forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        const targetElement = document.getElementById(targetSection + '-section');
+        if (targetElement) {
+            targetElement.classList.add('active');
+        }
+        
+        // Update URL hash without triggering navigation
+        if (window.location.hash !== '#' + targetSection) {
+            history.replaceState(null, null, '#' + targetSection);
+        }
+        
+        isNavigating = false;
+    }
     
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            
             const targetSection = this.getAttribute('data-section');
-            
-            // Update active navigation
-            document.querySelector('.nav-item.active').classList.remove('active');
-            this.parentElement.classList.add('active');
-            
-            // Show target section
-            sections.forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            const targetElement = document.getElementById(targetSection + '-section');
-            if (targetElement) {
-                targetElement.classList.add('active');
-            }
-            
-            // Update URL hash
-            window.location.hash = targetSection;
+            showSection(targetSection);
         });
     });
     
-    // Handle initial navigation based on hash
+    // Handle initial navigation based on hash - only once
     const hash = window.location.hash.substring(1);
     if (hash && ['dashboard', 'account', 'billing'].includes(hash)) {
-        const targetLink = document.querySelector(`[data-section="${hash}"]`);
-        if (targetLink) {
-            targetLink.click();
-        }
+        showSection(hash);
     }
 }
 
@@ -185,14 +211,27 @@ function easeOutCubic(t) {
 
 // Account Details Management
 let accountData = {};
+let isAccountInitialized = false;
 
 function initAccountDetails() {
+    // Prevent multiple initializations
+    if (isAccountInitialized) {
+        return;
+    }
+    isAccountInitialized = true;
+    
     loadAccountData();
     setupAccountEventListeners();
 }
 
 function loadAccountData() {
     showAccountLoading();
+    
+    // Prevent multiple simultaneous loads
+    if (loadAccountData.isLoading) {
+        return;
+    }
+    loadAccountData.isLoading = true;
     
     // Simulate API call delay
     setTimeout(() => {
@@ -207,11 +246,13 @@ function loadAccountData() {
                 accountData = data;
                 displayAccountData();
                 hideAccountLoading();
+                loadAccountData.isLoading = false;
             })
             .catch(error => {
                 console.error('Error loading account data:', error);
                 showAccountError();
                 hideAccountLoading();
+                loadAccountData.isLoading = false;
             });
     }, 500);
 }
