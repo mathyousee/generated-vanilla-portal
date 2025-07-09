@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initSessionTimeout();
         loadBillingHistory();
         initAccountDetails();
+        initAISummary();
         
         // Setup logout functionality
         const logoutBtn = document.getElementById('logoutBtn');
@@ -85,7 +86,7 @@ function initNavigation() {
     
     // Handle initial navigation based on hash - only once
     const hash = window.location.hash.substring(1);
-    if (hash && ['dashboard', 'account', 'billing'].includes(hash)) {
+    if (hash && ['dashboard', 'account', 'billing', 'ai-summary'].includes(hash)) {
         showSection(hash);
     }
 }
@@ -559,8 +560,331 @@ document.addEventListener('keydown', function(e) {
         document.querySelector('[data-section="billing"]').click();
     }
     
+    // Alt + S for AI Summary
+    if (e.altKey && e.key === 's') {
+        e.preventDefault();
+        document.querySelector('[data-section="ai-summary"]').click();
+    }
+    
     // Escape to go back to dashboard
     if (e.key === 'Escape') {
         document.querySelector('[data-section="dashboard"]').click();
     }
 });
+
+// AI Summary Functionality
+function initAISummary() {
+    // Configure PDF.js worker
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file-input');
+    const browseBtn = document.getElementById('browse-btn');
+    const fileInfo = document.getElementById('file-info');
+    const processBtn = document.getElementById('process-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const processingCard = document.getElementById('processing-card');
+    const extractedTextCard = document.getElementById('extracted-text-card');
+    const summaryCard = document.getElementById('summary-card');
+    
+    let selectedFile = null;
+    
+    // Initialize AI Summary when section is accessed
+    if (uploadArea && fileInput) {
+        setupFileUpload();
+    }
+    
+    function setupFileUpload() {
+        // Click to browse
+        browseBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        // Process button
+        processBtn.addEventListener('click', processFile);
+        
+        // Clear button
+        clearBtn.addEventListener('click', clearFile);
+        
+        // Summarize button
+        document.getElementById('summarize-btn').addEventListener('click', generateSummary);
+        
+        // Copy summary button
+        document.getElementById('copy-summary-btn').addEventListener('click', copySummary);
+        
+        // New file button
+        document.getElementById('new-file-btn').addEventListener('click', resetAISummary);
+    }
+    
+    function handleFileSelect(file) {
+        if (!file.type.includes('pdf') && !file.type.includes('image')) {
+            alert('Please select a PDF or image file.');
+            return;
+        }
+        
+        selectedFile = file;
+        document.getElementById('file-name').textContent = file.name;
+        document.getElementById('file-size').textContent = formatFileSize(file.size);
+        
+        uploadArea.style.display = 'none';
+        fileInfo.style.display = 'block';
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function clearFile() {
+        selectedFile = null;
+        fileInput.value = '';
+        uploadArea.style.display = 'block';
+        fileInfo.style.display = 'none';
+        hideProcessingCards();
+    }
+    
+    function hideProcessingCards() {
+        processingCard.style.display = 'none';
+        extractedTextCard.style.display = 'none';
+        summaryCard.style.display = 'none';
+    }
+    
+    async function processFile() {
+        if (!selectedFile) return;
+        
+        showProcessing('Extracting text from your file...');
+        
+        try {
+            let extractedText = '';
+            
+            if (selectedFile.type.includes('pdf')) {
+                extractedText = await extractTextFromPDF(selectedFile);
+            } else if (selectedFile.type.includes('image')) {
+                extractedText = await extractTextFromImage(selectedFile);
+            }
+            
+            if (extractedText.trim()) {
+                document.getElementById('extracted-text').value = extractedText;
+                processingCard.style.display = 'none';
+                extractedTextCard.style.display = 'block';
+            } else {
+                alert('No text could be extracted from the file.');
+                processingCard.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error processing file:', error);
+            alert('Error processing file. Please try again.');
+            processingCard.style.display = 'none';
+        }
+    }
+    
+    function showProcessing(message) {
+        document.getElementById('processing-message').textContent = message;
+        processingCard.style.display = 'block';
+        extractedTextCard.style.display = 'none';
+        summaryCard.style.display = 'none';
+    }
+    
+    async function extractTextFromPDF(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const typedArray = new Uint8Array(e.target.result);
+                    const pdf = await pdfjsLib.getDocument(typedArray).promise;
+                    let fullText = '';
+                    
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\\n';
+                    }
+                    
+                    resolve(fullText);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+    
+    async function extractTextFromImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const result = await Tesseract.recognize(e.target.result, 'eng', {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                const progress = Math.round(m.progress * 100);
+                                document.getElementById('processing-message').textContent = 
+                                    `Extracting text from image... ${progress}%`;
+                            }
+                        }
+                    });
+                    resolve(result.data.text);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    async function generateSummary() {
+        const extractedText = document.getElementById('extracted-text').value;
+        if (!extractedText.trim()) {
+            alert('No text to summarize.');
+            return;
+        }
+        
+        showProcessing('Generating AI summary...');
+        
+        try {
+            const summary = await callAzureOpenAI(extractedText);
+            document.getElementById('summary-text').innerHTML = formatSummary(summary);
+            processingCard.style.display = 'none';
+            summaryCard.style.display = 'block';
+        } catch (error) {
+            console.error('Error generating summary:', error);
+            alert('Error generating summary. Please check your Azure OpenAI configuration.');
+            processingCard.style.display = 'none';
+        }
+    }
+    
+    async function callAzureOpenAI(text) {
+        // Get Azure OpenAI configuration from environment variables
+        const endpoint = process.env.AZURE_OPENAI_ENDPOINT || 'your-azure-openai-endpoint';
+        const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'your-deployment-name';
+        const apiKey = process.env.AZURE_OPENAI_API_KEY || 'your-api-key';
+        
+        // For demo purposes, return a mock summary if no real configuration
+        if (!endpoint || endpoint === 'your-azure-openai-endpoint' || !apiKey || apiKey === 'your-api-key') {
+            return generateMockSummary(text);
+        }
+        
+        const response = await fetch(`${endpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2023-05-15`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': apiKey
+            },
+            body: JSON.stringify({
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are a helpful assistant that creates concise, well-structured summaries of text documents. Focus on the key points and main ideas.'
+                    },
+                    {
+                        role: 'user',
+                        content: `Please summarize the following text in a clear, concise manner with key points and main ideas:\\n\\n${text}`
+                    }
+                ],
+                max_tokens: 500,
+                temperature: 0.7
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Azure OpenAI API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.choices[0].message.content;
+    }
+    
+    function generateMockSummary(text) {
+        // Generate a mock summary for demo purposes
+        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+        const wordCount = text.split(/\\s+/).length;
+        
+        return `**Summary** (Demo Mode - Configure Azure OpenAI for real summarization)
+        
+**Key Points:**
+• Document contains approximately ${wordCount} words
+• ${sentences.length} sentences detected
+• Main topics appear to focus on ${extractKeywords(text).slice(0, 3).join(', ')}
+
+**Overview:**
+${sentences.slice(0, 3).join('. ')}.
+
+*Note: This is a demo summary. Please configure Azure OpenAI environment variables for AI-powered summarization.*`;
+    }
+    
+    function extractKeywords(text) {
+        const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should'];
+        const words = text.toLowerCase().match(/\\b\\w+\\b/g) || [];
+        const wordCount = {};
+        
+        words.forEach(word => {
+            if (word.length > 3 && !commonWords.includes(word)) {
+                wordCount[word] = (wordCount[word] || 0) + 1;
+            }
+        });
+        
+        return Object.entries(wordCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([word]) => word);
+    }
+    
+    function formatSummary(summary) {
+        return summary
+            .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+            .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
+            .replace(/\\n/g, '<br>')
+            .replace(/•/g, '•');
+    }
+    
+    function copySummary() {
+        const summaryText = document.getElementById('summary-text').innerText;
+        navigator.clipboard.writeText(summaryText).then(() => {
+            const btn = document.getElementById('copy-summary-btn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        });
+    }
+    
+    function resetAISummary() {
+        clearFile();
+        hideProcessingCards();
+    }
+}

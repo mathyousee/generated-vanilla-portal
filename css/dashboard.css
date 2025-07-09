@@ -440,3 +440,128 @@
     gap: var(--spacing-lg);
   }
 }
+
+/* AI Summary Styles */
+.ai-summary-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.upload-area {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--spacing-xl);
+  text-align: center;
+  transition: border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.upload-area:hover,
+.upload-area.drag-over {
+  border-color: var(--color-primary);
+  background-color: oklch(0.99 0.01 245);
+}
+
+.upload-icon {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-muted-foreground);
+}
+
+.upload-area p {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-muted-foreground);
+}
+
+.file-info {
+  padding: var(--spacing-lg);
+  background-color: oklch(0.99 0.01 245);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+
+.file-info p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.file-info .btn {
+  margin-right: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.processing-status {
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid oklch(0.95 0.02 245);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto var(--spacing-md);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.extracted-text-container textarea {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono, 'Courier New', monospace);
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  background-color: oklch(0.99 0.01 245);
+}
+
+.extracted-text-container .btn {
+  margin-top: var(--spacing-md);
+}
+
+.summary-container {
+  padding: var(--spacing-lg);
+}
+
+.summary-container #summary-text {
+  padding: var(--spacing-lg);
+  background-color: oklch(0.99 0.01 245);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--spacing-lg);
+  line-height: 1.6;
+}
+
+.summary-container #summary-text strong {
+  color: var(--color-primary);
+}
+
+.summary-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .ai-summary-container {
+    gap: var(--spacing-lg);
+  }
+  
+  .upload-area {
+    padding: var(--spacing-lg);
+  }
+  
+  .summary-actions {
+    flex-direction: column;
+  }
+  
+  .summary-actions .btn {
+    width: 100%;
+  }
+}

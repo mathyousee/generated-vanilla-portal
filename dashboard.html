@@ -9,6 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Tesseract.js for OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="dashboard-layout">
@@ -62,6 +66,18 @@
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
                         Billing History
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#ai-summary" class="nav-link" data-section="ai-summary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                            <polyline points="14,2 14,8 20,8"></polyline>
+                            <path d="M16 13H8"></path>
+                            <path d="M16 17H8"></path>
+                            <path d="M10 9H8"></path>
+                        </svg>
+                        AI Summary
                     </a>
                 </li>
             </ul>
@@ -276,6 +292,80 @@
                                     <!-- Billing data will be populated by JavaScript -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Summary Section -->
+            <section id="ai-summary-section" class="content-section">
+                <div class="section-header">
+                    <h1>AI Summary</h1>
+                    <p>Upload a PDF or image file to extract text and generate an AI-powered summary.</p>
+                </div>
+
+                <div class="ai-summary-container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>File Upload</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="upload-area" id="upload-area">
+                                <div class="upload-icon">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                                        <polyline points="14,2 14,8 20,8"></polyline>
+                                    </svg>
+                                </div>
+                                <p>Drag and drop your PDF or image file here, or click to browse</p>
+                                <input type="file" id="file-input" accept=".pdf,image/*" style="display: none;">
+                                <button type="button" id="browse-btn" class="btn btn-secondary">Browse Files</button>
+                            </div>
+                            <div id="file-info" class="file-info" style="display: none;">
+                                <p><strong>Selected file:</strong> <span id="file-name"></span></p>
+                                <p><strong>File size:</strong> <span id="file-size"></span></p>
+                                <button type="button" id="process-btn" class="btn btn-primary">Process File</button>
+                                <button type="button" id="clear-btn" class="btn btn-secondary">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="processing-card" style="display: none;">
+                        <div class="card-header">
+                            <h3>Processing</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="processing-status">
+                                <div class="loading-spinner"></div>
+                                <p id="processing-message">Extracting text from your file...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="extracted-text-card" style="display: none;">
+                        <div class="card-header">
+                            <h3>Extracted Text</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="extracted-text-container">
+                                <textarea id="extracted-text" rows="10" readonly></textarea>
+                                <button type="button" id="summarize-btn" class="btn btn-primary">Generate AI Summary</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="summary-card" style="display: none;">
+                        <div class="card-header">
+                            <h3>AI Summary</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="summary-container">
+                                <div id="summary-text"></div>
+                                <div class="summary-actions">
+                                    <button type="button" id="copy-summary-btn" class="btn btn-secondary">Copy Summary</button>
+                                    <button type="button" id="new-file-btn" class="btn btn-primary">Process New File</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
